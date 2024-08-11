@@ -1,11 +1,62 @@
 import express from 'express';
 import fetch from 'node-fetch';
-import cors from 'cors'; // Import cors
+import cors from 'cors'; 
+import mongoose from 'mongoose';
+import bodyParser from 'body-parser';
+
+const customerSchema = new mongoose.Schema({
+    customerId: { type: String, required: true, unique: true },
+    domain: { type: String, required: true },
+    apiToken: { type: String, required: true, unique: true},
+    isActive: { type: Boolean, default: true },
+  });
+  
+  const Customer = mongoose.model('customers', customerSchema);
+  
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors()); // Enable CORS
 app.use(express.json());
+
+// Middleware
+app.use(bodyParser.json());
+
+// Database connection
+mongoose.connect('connection-string/word-wizard?retryWrites=true&w=majority', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+mongoose.connection.on('connected', () => {
+  console.log('Connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error(`Failed to connect to MongoDB: ${err.message}`);
+});
+
+// Routes
+app.post('/api/verify', async (req, res) => {
+    const { apiToken, domain } = req.body;
+  
+    if (!apiToken || !domain) {
+      return res.status(400).json({ error: 'ApiToken and domain are required.' });
+    }
+  
+    try {
+          const customer = await Customer.findOne({ apiToken: apiToken, domain:domain, isActive: true });
+  
+      if (customer) {
+        return res.json({ isValid: true });
+      } else {
+        return res.json({ isValid: false });
+      }
+    } catch (error) {
+      console.error('Error verifying customer:', error);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+  });
 
 app.post('/api/proxy', async (req, res) => {
     const { content } = req.body;

@@ -1,5 +1,5 @@
 (function () {
-  const API_URL = 'http://localhost:3000/api/proxy';
+  const API_URL = 'http://localhost:3000/api';
 
 function injectStyles() {
   const style = document.createElement('style');
@@ -60,7 +60,7 @@ function createTooltip(term, definition) {
   // Function to get glossary terms from OpenAI API
   async function sendContentToServer(content) {
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(API_URL+'/proxy', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -125,9 +125,40 @@ function replaceTermsInNode(node, glossary) {
   }
 }
 
+async function verifyCustomer(apiToken, domain) {
+  try {
+    const response = await fetch(API_URL+'/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ apiToken, domain }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.isValid;
+    } else {
+      console.error('Failed to verify customer:', response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error('Error verifying customer:', error);
+  }
+  return false;
+}
+
   // Execute on DOM content loaded
   document.addEventListener('DOMContentLoaded', async function () {
-    injectStyles();
+    // const apiToken = document.currentScript.getAttribute('data-id');
+    const domain = window.location.hostname;
+    const apiToken = "123";
+    //const domain = ".com";
+
+    const isValid = await verifyCustomer(apiToken, domain);
+    if (!isValid) {
+      console.warn('This script is not authorized to run on this domain.');
+      return;
+    }    injectStyles();
     const content = extractMainContent();
     //const glossary = await sendContentToServer(content);
     debugger
