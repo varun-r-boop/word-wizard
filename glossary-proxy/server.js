@@ -3,9 +3,12 @@ import fetch from 'node-fetch';
 import cors from 'cors'; 
 import mongoose from 'mongoose';
 import bodyParser from 'body-parser';
+import crypto from 'crypto';
+import ObjectId from 'mongodb';
 
 const customerSchema = new mongoose.Schema({
     customerId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true},
     domain: { type: String, required: true },
     apiToken: { type: String, required: true, unique: true},
     isActive: { type: Boolean, default: true },
@@ -23,7 +26,7 @@ app.use(express.json());
 app.use(bodyParser.json());
 
 // Database connection
-mongoose.connect('connection-string/word-wizard?retryWrites=true&w=majority', {
+mongoose.connect(process.env.DB_CONNECTION, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -37,6 +40,23 @@ mongoose.connection.on('error', (err) => {
 });
 
 // Routes
+app.post('/api/submit-info', async (req, res) => {
+  const { email, domain } = req.body;
+  const newId = new ObjectId();
+  const customerId = Math.floor((Math.random()) * 0x10000)
+  .toString(16);
+  const apiToken = crypto.randomBytes(32).toString('hex');
+   const customer = await Customer.updateOne(
+    { set: {_id: newId}},
+    { set: {customerId: customerId}},
+    { $set: {apiToken: apiToken}},
+    { $set: {email: email }},
+    { $set: { domain: domain } }, 
+    { $set: { isActive: false } }, 
+    { upsert: true } 
+);  res.status(200).send('Information received');
+});
+
 app.post('/api/verify', async (req, res) => {
     const { apiToken, domain } = req.body;
   
@@ -60,9 +80,8 @@ app.post('/api/verify', async (req, res) => {
 
 app.post('/api/proxy', async (req, res) => {
     const { content } = req.body;
-    const API_KEY = '';
     const API_URL = 'https://api.openai.com/v1/chat/completions';
-
+    const API_KEY = process.env.OPEN_AI_API;
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -74,7 +93,7 @@ app.post('/api/proxy', async (req, res) => {
                 model: 'gpt-3.5-turbo',
                 messages: [
                     { role: 'system', content: 'You are a helpful assistant.' },
-                    { role: 'user', content: `Identify important terms and provide brief definitions for the following content:\n\n${content}\n\nList each term followed by its definition without numbering.` }
+                    { role: 'user', content: `Identify important terms and provide brief definitions for the following content:\n\n${content}\n\nList each term followed by its definition without numbering or any special characters.` }
                 ],
                 max_tokens: 1000,
                 temperature: 0.5,
