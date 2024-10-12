@@ -1,36 +1,53 @@
 (function () {
-  const API_URL = 'http://localhost:3000/api';
+  const API_URL = 'https://word-wizard-z3b5.onrender.com/api';
 
 function injectStyles() {
   const style = document.createElement('style');
   style.innerHTML = `
-  .glossary-term {
-      position: relative;
-      cursor: pointer;
-      text-decoration: underline dotted;
-    }
+.glossary-term {
+  position: relative;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  z-index: 9999;
+}
+
 .glossary-term::after {
   content: attr(data-tooltip);
   position: absolute;
   background-color: #333;
   color: #fff;
-  padding: 15px; /* Increased padding for more space inside the tooltip */
+  padding: 15px;
   border-radius: 5px;
-  white-space: normal; /* Allow line breaks for long content */
+  white-space: normal;
   width: 300px;
-  height: 200px;
-  display: block; /* Necessary to apply height */
+  height: auto; /* Auto height for better content fitting */
+  display: none;
   opacity: 0;
   transition: opacity 0.3s ease;
-  transform: translateY(-100%);
-  top: -200px; /* Adjust to place the tooltip above the term */
-  left: 50%; /* Center horizontally */
-  transform: translate(-50%, -10px); /* Center alignment fix */
-  overflow: hidden; /* Hide overflow content */
+  left: 50%;
+  transform: translate(-50%, -119%);
+  z-index: 1000;
+  top: auto;
+}
+
+.glossary-term::before {
+  content: '';
+  position: absolute;
+      top: -65%; /* Place triangle right below the tooltip */
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent; /* Triangle pointing upwards */
+  display: none;
+  z-index: 999;
 }
 
 .glossary-term:hover::after,
-.glossary-term:focus::after {
+.glossary-term:focus::after,
+.glossary-term:hover::before,
+.glossary-term:focus::before {
+  display: block;
   opacity: 1;
 }
   `;
@@ -92,7 +109,7 @@ function createTooltip(term, definition) {
 
 // Function to traverse and replace terms with glossary tooltips
 function traverseNodes(glossary) {
-  const contentNodes = document.body.querySelectorAll('article, main, .content, .content_block_text');
+  const contentNodes = document.body.querySelectorAll('article, main');
   contentNodes.forEach(node => {
     replaceTermsInNode(node, glossary);
   });
@@ -100,28 +117,39 @@ function traverseNodes(glossary) {
 
 // Helper function to replace terms within a specific node
 function replaceTermsInNode(node, glossary) {
-  if (node.nodeType === Node.ELEMENT_NODE) {
+  // Process only text nodes
+  if (node.nodeType === Node.TEXT_NODE) {
     const textContent = node.textContent;
     let replacedText = textContent;
 
     // Replace each glossary term with the tooltip
-    Object.keys(glossary).forEach(term => {
+    for (const term of Object.keys(glossary)) {
       const regex = new RegExp(`\\b${term}\\b`, 'gi');
-      replacedText = replacedText.replace(regex, (match) => {
-        const tooltipSpan = createTooltip(match, glossary[term]);
-        return tooltipSpan.outerHTML;
-      });
-    });
+      if (regex.test(replacedText)) {
+          replacedText = replacedText.replace(regex, (match) => {
+              const tooltipSpan = createTooltip(match, glossary[term]);
+              return tooltipSpan.outerHTML;
+          });
+          break;  // Exit the loop after first replacement
+      }
+  }
 
-    // Replace the original text node with the new span element if any term was replaced
+    // Only replace text node if any term was matched
     if (replacedText !== textContent) {
-      const span = document.createElement('span');
-      span.innerHTML = replacedText;
-      node.replaceWith(...span.childNodes);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = replacedText;
+
+      // Replace text node with the new content, preserving structure
+      const fragment = document.createDocumentFragment();
+      Array.from(tempDiv.childNodes).forEach(child => fragment.appendChild(child));
+      node.replaceWith(fragment);
     }
   } else if (node.nodeType === Node.ELEMENT_NODE) {
-    // Recursively process child nodes
-    node.childNodes.forEach(child => replaceTermsInNode(child, glossary));
+    // Avoid replacing inside existing tooltips
+    if (!node.classList.contains('glossary-term')) {
+      // Recursively process child nodes
+      Array.from(node.childNodes).forEach(child => replaceTermsInNode(child, glossary));
+    }
   }
 }
 
@@ -151,6 +179,8 @@ async function verifyCustomer(apiToken, domain) {
   document.addEventListener('DOMContentLoaded', async function () {
     // const apiToken = document.currentScript.getAttribute('data-id');
     const domain = window.location.hostname;
+    const parts = window.location.pathname.split('/');
+    const path = parts[parts.length - 1];
     const apiToken = "123";
     //const domain = ".com";
 
@@ -158,14 +188,18 @@ async function verifyCustomer(apiToken, domain) {
     if (!isValid) {
       console.warn('This script is not authorized to run on this domain.');
       return;
-    }    injectStyles();
-    const content = extractMainContent();
-    //const glossary = await sendContentToServer(content);
-    debugger
-    const defaultGlossary = {
-      Security:'A platform for building mobile and desktop web applications.',
-      Angular:'A building block of Angular applications.',
-    };
-    traverseNodes(defaultGlossary);
+    }   
+    injectStyles();
+  var glossary = window.localStorage.getItem(`wordwizard-${path}`);
+  if(glossary && glossary !== "undefined") {
+    glossary = JSON.parse(glossary);
+  }
+    if(!glossary || glossary == "undefined") {
+      const content = extractMainContent();
+      glossary = await sendContentToServer(content);
+      window.localStorage.setItem(`wordwizard-${path}`, JSON.stringify(glossary));
+    }
+  
+    traverseNodes(glossary);
   });
 })();
