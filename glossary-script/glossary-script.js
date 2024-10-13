@@ -182,6 +182,7 @@ async function verifyCustomer(apiToken, domain) {
     const parts = window.location.pathname.split('/');
     const path = parts[parts.length - 1];
     const apiToken = "123";
+    console.log("WordWizard");
     //const domain = ".com";
 
     const isValid = await verifyCustomer(apiToken, domain);
