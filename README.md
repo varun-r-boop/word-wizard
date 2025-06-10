@@ -18,7 +18,7 @@ Word Wizard is a lightweight, AI-powered glossary tool that automatically identi
 
 Add this script to your HTML page in the header:
 
-<script src="https://cdn.jsdelivr.net/gh/varun-r-boop/word-wizard@users/varun/js-script/glossary-script/glossary-script.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/varun-r-boop/word-wizard@users/varun/js-script/glossary-script/glossary-script.js" ></script>
 
 🛠️ How It Works
 
