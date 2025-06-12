@@ -5,6 +5,9 @@ import mongoose from 'mongoose';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import ObjectId from 'mongodb';
+import natural from 'natural';
+const tokenizer = new natural.WordTokenizer();
+const tagger = new natural.BrillPOSTagger();
 
 const customerSchema = new mongoose.Schema({
     customerId: { type: String, required: true, unique: true },
@@ -26,7 +29,7 @@ app.use(express.json());
 app.use(bodyParser.json());
 
 // Database connection
-mongoose.connect(process.env.DB_CONNECTION, {
+mongoose.connect("mongodb+srv://kawai_weebster:xyf7AS6TD4KxK6tA@cluster0.hiaojfi.mongodb.net/", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -60,13 +63,16 @@ app.post('/api/submit-info', async (req, res) => {
 app.post('/api/verify', async (req, res) => {
     const { apiToken, domain } = req.body;
   
-    if (!apiToken || !domain) {
-      return res.status(400).json({ error: 'ApiToken and domain are required.' });
-    }
+    // if (!apiToken || !domain) {
+    //   return res.status(400).json({ error: 'ApiToken and domain are required.' });
+    // }
   
     try {
-          const customer = await Customer.findOne({ apiToken: apiToken, domain:domain, isActive: true });
-  
+      debugger;
+      var content = "DataUtils is a lightweight JavaScript library designed to simplify data manipulation tasks, such as filtering, sorting, and transforming arrays and objects. This library is ideal for developers who want to streamline their data handling processes in web applications.";
+      constructJargonList(content);
+      const customer = await Customer.findOne({ apiToken: apiToken, domain:domain, isActive: true });
+
       if (customer) {
         return res.json({ isValid: true });
       } else {
@@ -113,6 +119,32 @@ app.post('/api/proxy', async (req, res) => {
     }
 });
 
+function constructJargonList(content) {
+  // Tokenize the content into words
+  const tokens = tokenizer.tokenize(content);
+  
+  // Perform part of speech tagging
+  const taggedWords = tagger.tag(tokens);
+
+  // Frequency analysis to determine potential jargon
+  const wordFrequency = {};
+  taggedWords.forEach(({ word, tag }) => {
+      // Focus on nouns (NN, NNP, etc.)
+      if (tag.startsWith('NN')) {
+          wordFrequency[word.toLowerCase()] = (wordFrequency[word.toLowerCase()] || 0) + 1;
+      }
+  });
+
+  // Define a threshold for jargon frequency (adjust as necessary)
+  const threshold = 1; // Change this to filter out common words
+
+  // Construct jargon list based on frequency analysis
+  for (const [word, count] of Object.entries(wordFrequency)) {
+      if (count > threshold) {
+          jargonList.add(word);
+      }
+  }
+}
 function parseGlossary(glossaryText) {
     const glossary = {};
     const lines = glossaryText.split('\n');
