@@ -6,6 +6,10 @@ import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import ObjectId from 'mongodb';
 import natural from 'natural';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 const tokenizer = new natural.WordTokenizer();
 const tagger = new natural.BrillPOSTagger();
 
@@ -29,7 +33,7 @@ app.use(express.json());
 app.use(bodyParser.json());
 
 // Database connection
-mongoose.connect("mongodb+srv://kawai_weebster:xyf7AS6TD4KxK6tA@cluster0.hiaojfi.mongodb.net/", {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
